@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 
-def init_wandb(model, config, key, wandb_project, wandb_run, wandb_run, wandb_run_id, wandb_resume) -> None:
+def init_wandb(config, key, wandb_project, wandb_run, wandb_run_id, wandb_resume) -> None:
     """
     Initialize project on Weights & Biases
     Args:
@@ -11,9 +11,12 @@ def init_wandb(model, config, key, wandb_project, wandb_run, wandb_run, wandb_ru
         args (TrainOptions,optional): TrainOptions class (refer options/train_options.py). Defaults to None.
         key (Wandb_API_Key): Find it on your wandb account
     """
-    os.environ["WANDB_API_KEY"] = key
+    #os.environ["WANDB_API_KEY"] = key
+    print("*********************")
+    print(wandb_resume)
+    print("*********************")
+    wandb.login()
     if wandb_resume:
-        wandb.login()
         wandb.init(project = wandb_project, name = wandb_run, id = wandb_run_id, resume = True )
         print("---------------------------------------------------------------------------------------------------")
         print("Session Resumed")
@@ -21,8 +24,8 @@ def init_wandb(model, config, key, wandb_project, wandb_run, wandb_run, wandb_ru
     else:
         wandb.init(project = wandb_project, name = wandb_run, config = config)
     
-    if config["wandb_config"]["wandb_watch"]:
-    wandb.watch(model, log="all")
+    #if config["wandb_config"]["wandb_watch"]:
+    #    wandb.watch(model, log="all")
 
 
 def wandb_log(train_loss, val_loss, epoch):

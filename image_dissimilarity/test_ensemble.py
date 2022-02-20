@@ -11,15 +11,19 @@ from tqdm import tqdm
 import ast
 from itertools import product
 from numpy.linalg import norm
+from util.load import load_ckp
+from util import wandb_utils
+from util.load import load_ckp
 
 from util import trainer_util, metrics
 from util.iter_counter import IterationCounter
-from models.dissimilarity_model import DissimNet, DissimNetPrior
+from models.dissimilarity_model import DissimNet, DissimNetPrior, ResNet18DissimNet, ResNet18DissimNetPrior, ResNet101DissimNetPrior
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, help='Path to the config file.')
 parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
 #parser.add_argument('--weights', type=str, default='[0.70, 0.1, 0.1, 0.1]', help='weights for ensemble testing [model, entropy, mae, distance]')
+
 opts = parser.parse_args()
 cudnn.benchmark = True
 #weights = ast.literal_eval(opts.weights)
@@ -40,6 +44,7 @@ def grid_search(model_num=4):
     d = {}
     w = [0, 1, 2, 3]
     best_score, best_roc, best_ap, best_weights = 1.0, 0, 0, None
+    best = -1
     # iterate all possible combinations (cartesian product)
     for weights in product(w, repeat=model_num):
         # skip if all weights are equal
@@ -54,8 +59,9 @@ def grid_search(model_num=4):
         # evaluate weights
         score_roc, score_ap, score_fp = evaluate_ensemble(weights)
         print('Weights: %s Score_FP: %.3f Score_ROC:%.3f Score_AP:%.3f' % (weights, score_fp, score_roc, score_ap))
-        if score_fp < best_score:
+        if score_ap - score_fp > best:
             best_score, best_weights, best_roc, best_ap = score_fp, weights, score_roc, score_ap
+            best = score_ap - score_fp
             print('>BEST SO FAR %s Score_FP: %.3f Score_ROC:%.3f Score_AP:%.3f' % (best_weights, best_score, best_roc, best_ap))
     return list(best_weights), best_score, best_roc, best_ap
 
@@ -111,11 +117,21 @@ if __name__ == '__main__':
     # Load experiment setting
     with open(opts.config, 'r') as stream:
         config = yaml.load(stream, Loader=yaml.FullLoader)
+
+    #get wandb information
+    wandb_Api_key = config["wandb_config"]['wandb_Api_key']
+    wandb_resume = config["wandb_config"]['wandb_resume']
+    wandb_run_id = config["wandb_config"]['wandb_run_id']
+    wandb_run = config["wandb_config"]['wandb_run']
+    wandb_project = config["wandb_config"]['wandb_project']
+    epoch = config["wandb_config"]['best_epoch']
+
+    #Logs into wandb with given api key
+    os.environ["WANDB_API_KEY"] = wandb_Api_key
     
     # get experiment information
     exp_name = config['experiment_name']
     save_fdr = config['save_folder']
-    epoch = config['which_epoch']
     store_fdr = config['store_results']
     store_fdr_exp = os.path.join(config['store_results'], exp_name)
     
@@ -142,18 +158,30 @@ if __name__ == '__main__':
     cfg_test_loader['dataset_args']['prior'] = prior
     test_loader = trainer_util.get_dataloader(cfg_test_loader['dataset_args'], cfg_test_loader['dataloader_args'])
     
-    # get model
-    if config['model']['prior']:
-        diss_model = DissimNetPrior(**config['model']).cuda()
-    elif 'vgg' in config['model']['architecture']:
-        diss_model = DissimNet(**config['model']).cuda()
+    # Added functionality to access vgg16, resnet18, resnet101 encoders
+    if 'vgg' in config['model']['architecture']:
+        if config['model']['prior']:
+            diss_model = DissimNetPrior(**config['model']).cuda()
+        else:
+            diss_model = DissimNet(**config['model']).cuda()
+
+    elif 'resnet18' in config['model']['architecture']:
+        if config['model']['prior']:
+            diss_model = ResNet18DissimNetPrior(**config['model']).cuda()
+        else:
+            diss_model = ResNet18DissimNet(**config['model']).cuda()
+
+    elif 'resnet101' in config['model']['architecture'] and config['model']['prior']:
+        diss_model = ResNet101DissimNetPrior(**config['model']).cuda()
     else:
         raise NotImplementedError()
     
+    wandb_resume = wandb_resume
+    wandb_utils.init_wandb(config=config, key=wandb_Api_key,wandb_project= wandb_project, wandb_run=wandb_run, wandb_run_id=wandb_run_id, wandb_resume=wandb_resume)
     diss_model.eval()
-    model_path = os.path.join(save_fdr, exp_name, '%s_net_%s.pth' % (epoch, exp_name))
-    model_weights = torch.load(model_path)
-    diss_model.load_state_dict(model_weights)
+    if wandb_resume:
+        checkpoint = load_ckp(config["wandb_config"]["model_path_base"], "best", epoch)
+        diss_model.load_state_dict(checkpoint['state_dict'])
     
     softmax = torch.nn.Softmax(dim=1)
     best_weights, best_score, best_roc, best_ap = grid_search()

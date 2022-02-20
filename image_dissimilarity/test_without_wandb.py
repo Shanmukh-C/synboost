@@ -12,8 +12,8 @@ from tqdm import tqdm
 import ast
 from itertools import product
 from numpy.linalg import norm
-from util.load import load_ckp
 from util import wandb_utils
+from util.load import load_ckp
 from util.load import load_ckp
 from scipy.special import softmax as sft
 from natsort import natsorted
@@ -24,6 +24,7 @@ from models.dissimilarity_model import DissimNet, DissimNetPrior, ResNet18Dissim
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, help='Path to the config file.')
+parser.add_argument('--load_path', type=str, help='Path to the path file.')
 parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
 #parser.add_argument('--weights', type=str, default='[0.70, 0.1, 0.1, 0.1]', help='weights for ensemble testing [model, entropy, mae, distance]')
 
@@ -36,17 +37,6 @@ cudnn.benchmark = True
 # Load experiment setting
 with open(opts.config, 'r') as stream:
     config = yaml.load(stream, Loader=yaml.FullLoader)
-
-#get wandb information
-wandb_Api_key = config["wandb_config"]['wandb_Api_key']
-wandb_resume = config["wandb_config"]['wandb_resume']
-wandb_run_id = config["wandb_config"]['wandb_run_id']
-wandb_run = config["wandb_config"]['wandb_run']
-wandb_project = config["wandb_config"]['wandb_project']
-epoch = config["wandb_config"]['best_epoch']
-
-#Logs into wandb with given api key
-os.environ["WANDB_API_KEY"] = wandb_Api_key
 
 # get experiment information
 exp_name = config['experiment_name']
@@ -102,12 +92,10 @@ elif 'resnet101' in config['model']['architecture'] and config['model']['prior']
 else:
     raise NotImplementedError()
 
-wandb_resume = wandb_resume
-wandb_utils.init_wandb(config=config, key=wandb_Api_key,wandb_project= wandb_project, wandb_run=wandb_run, wandb_run_id=wandb_run_id, wandb_resume=wandb_resume)
+
 diss_model.eval()
-if wandb_resume:
-    checkpoint = load_ckp(config["wandb_config"]["model_path_base"], "best", epoch)
-    diss_model.load_state_dict(checkpoint['state_dict'], strict=False)
+checkpoint = torch.load(opts.load_path)
+diss_model.load_state_dict(checkpoint['state_dict'], strict=False)
 
 softmax = torch.nn.Softmax(dim=1)
 

@@ -1,8 +1,8 @@
 # Name of the experiment for saving files
 experiment_name: replicate_best_mult_3 # where checkpoints are stored
-save_folder: /media/giancarlo/Samsung_T5/personal/master_thesis/cvpr/results/ # where checkpoints are stored
+save_folder: /kaggle/working/results/ # where checkpoints are stored
 which_epoch: best
-store_results: /media/giancarlo/Samsung_T5/personal/master_thesis/cvpr/fs_static/predictions
+store_results: /kaggle/working/results/
 visualize: False
 ensemble: True
 
@@ -23,7 +23,7 @@ dataset:
 # parameters for dataloaders
 test_dataloader:
   dataset_args:
-    dataroot: /media/giancarlo/Samsung_T5/data/thesis/final_dataset/fs_static
+    dataroot: /kaggle/input/cityscapes-synboost/final_dataset/fs_static
     preprocess_mode: none
     crop_size: 512
     aspect_ratio: 2
@@ -38,3 +38,17 @@ test_dataloader:
     batch_size: 1
     num_workers: 1
     shuffle: False
+    
+wandb_config:
+  wandb_Api_key: "10989cf7d666f7d3bfcc31c6185448bda1a19767" #Wandb_API_Key (Environment Variable)
+  wandb_resume: True   #Resume Training
+  wandb_run_id: "34cf117d"  #Previous Run ID for Resuming , None if starting new run
+  wandb_run: "Light data (Shashwat Trial 1)"   #Name of wandb run
+  wandb_project: "MLRC_Synboost"  #wandb project name
+  pre_epoch: 0    #Previous epoch Number to resume training
+  epochs: 13      #No. of epochs to run 
+  name: "latest"  #file Name of the resuming/starting run
+  best_epoch: 10  #best epoch number in wandb for testing
+  wandb_watch: True
+  wandb_watch_freq: 50
+  model_path_base: /kaggle/working/synboost/image_dissimilarity/wandb/latest-run/files/

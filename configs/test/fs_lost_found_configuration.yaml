@@ -1,0 +1,52 @@
+# Name of the experiment for saving files
+experiment_name: replicate_best_mult_3 # where checkpoints are stored
+save_folder: /kaggle/working/results/ # where checkpoints are stored
+which_epoch: best
+store_results: /kaggle/working/results/
+visualize: False
+ensemble: True
+
+# model options
+model:
+  architecture: vgg16 #[options: 'vgg16', 'vgg16_bn', 'vgg16_guided', 'resnet18', 'vgg16_correlated']
+  semantic: True
+  pretrained: True
+  correlation: True
+  prior: True
+  spade: 'decoder' #[options: 'encoder', 'decoder', 'both', '']
+  num_semantic_classes: 19 # Actual training labels
+  endtoend: False   #make it true for having an endtoend ensemble setup
+
+# parameters for dataset
+dataset:
+  num_classes: 19 # Actual training labels
+
+# parameters for dataloaders
+test_dataloader:
+  dataset_args:
+    dataroot: /kaggle/input/cityscapes-synboost/final_dataset/fs_lost_and_found
+    preprocess_mode: none
+    crop_size: 512
+    aspect_ratio: 2
+    flip: False
+    normalize: True
+    light_data: False
+    roi: True
+    void: False
+    num_semantic_classes: 19
+    is_train: False
+  dataloader_args:
+    batch_size: 1
+    num_workers: 1
+    shuffle: False
+    
+wandb_config:
+  wandb_Api_key: "0ccd89e91ab10c5e41e99bd8f524d6049cfda8de" #Wandb_API_Key (Environment Variable)
+  wandb_resume: True   #Resume Training
+  wandb_run_id: "9oonzgel"  #Previous Run ID for Resuming , None if starting new run
+  wandb_run: "Lightning Test_2"   #Name of wandb run 
+  max_epoch: 13  #number of epochs for which the model runs
+  artifact_path:  "model-9oonzgel:v3"
+  wandb_watch: True
+  wandb_watch_freq: 50
+  model_path_base: /kaggle/working/synboost/image_dissimilarity/wandb/latest-run/files/
